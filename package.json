@@ -16,10 +16,13 @@
     "@mui/icons-material": "^7.3.4",
     "@mui/material": "^7.3.4",
     "@mui/x-date-pickers": "^8.14.0",
+    "bootstrap": "^5.3.8",
     "dayjs": "^1.11.18",
     "react": "^19.1.1",
+    "react-bootstrap": "^2.10.10",
     "react-dom": "^19.1.1",
     "react-hook-form": "^7.65.0",
+    "react-router": "^7.9.4",
     "react-router-dom": "^7.9.4",
     "yup": "^1.7.1"
   },
