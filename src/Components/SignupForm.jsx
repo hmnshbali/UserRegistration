@@ -1,14 +1,15 @@
-import React, { useEffect } from 'react';
-import { TextField, Button, RadioGroup, FormControlLabel, Radio, FormControl, FormLabel, MenuItem, Select, InputLabel, Grid, IconButton, Box, Typography, Container, Paper, Divider } from '@mui/material';
+import React, { useState, useEffect } from 'react';
+import { TextField, Button, RadioGroup, FormControlLabel, Radio, FormControl, FormHelperText, FormLabel, MenuItem, Select, InputLabel, Grid, IconButton, Box, Typography, Container, Paper, Divider } from '@mui/material';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
+import Form from 'react-bootstrap/Form';
 import * as yup from 'yup';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { Add, Remove } from '@mui/icons-material';
 import dayjs from 'dayjs';
 import { useUsers } from '../context/UserContext';
 
-
+import { useNavigate } from 'react-router-dom';
 
 
 const schema = yup.object().shape({
@@ -21,8 +22,12 @@ const schema = yup.object().shape({
     ).min(6).required(),
     confirmPassword: yup.string().oneOf([yup.ref('password')], 'Passwords must match'),
     gender: yup.string().required(),
-    dob: yup.date().required('Date of Birth is required').nullable(),
-    profileType: yup.string().required(),
+    dob: yup
+        .date()
+        .nullable()
+        .required('Date of birth is required'),
+
+    profileType: yup.string().required('Profile type is required'),
     phoneNumbers: yup.array().of(
         yup.string()
             .matches(/^(?:(?:\+|0{0,2})91(\s*[\-]\s*)?|[0]?)?[789]\d{9}$/, {
@@ -36,7 +41,7 @@ const schema = yup.object().shape({
             street: yup.string().required('Street is required'),
             city: yup.string().required('City is required'),
             state: yup.string().required('State is required'),
-            zip: yup.string().required('ZIP Code is required')
+            zip: yup.string().max(6, 'ZIP Code must be 6 digits').required('ZIP Code is required')
         })
     ),
     relatives: yup.array().of(
@@ -45,16 +50,27 @@ const schema = yup.object().shape({
             relationship: yup.string().required('Relationship is required'),
             age: yup.number().typeError('Age is required').required('Age is required'),
         })
-    )
+    ),
+    documents: yup.array().of(
+        yup.object().shape({
+            type: yup.string().required('Document type is required'),
+            file: yup.mixed().required('Document file is required'),
+        })
+    ),
 });
 
 const SignupForm = () => {
-    // const navigate = useNavigate();
+    const navigate = useNavigate();
+
+
     const {
         register,
         control,
         handleSubmit,
         reset,
+        trigger,
+        watch,
+        setValue,
         formState: { errors },
     } = useForm({
         resolver: yupResolver(schema),
@@ -69,9 +85,15 @@ const SignupForm = () => {
             profileType: '',
             phoneNumbers: [''],
             addresses: [{ street: '', city: '', state: '', zip: '' }],
-            relatives: [{ name: '', relationship: '', age: '' }]
+            relatives: [{ name: '', relationship: '', age: '' }],
+            documents: [
+                { type: '', file: null },
+                { type: '', file: null }
+            ]
         },
     });
+
+
 
 
     const { fields: phonefields, append: addphone, remove: removephone } = useFieldArray({ control, name: 'phoneNumbers' });
@@ -79,12 +101,18 @@ const SignupForm = () => {
     const { fields: addressFields, append: addAddress, remove: removeAddress } = useFieldArray({ control, name: 'addresses' });
 
     const { fields: relativeFields, append: addRelative, remove: removeRelative } = useFieldArray({ control, name: 'relatives' });
-
+    const { fields: documentFields } = useFieldArray({ control, name: 'documents' });
     const { addUser } = useUsers();
 
-    const onSubmit = (data) => {
-        console.log('clciked');
+    const isAdult = dayjs().diff(dayjs(watch('dob')), 'year') >= 18;
+    const dob = watch('dob');
+    const isMinor = dob ? dayjs().diff(dayjs(watch('dob')), 'year') < 18 : false;
+    console.log(isMinor);
 
+
+    const onSubmit = (data) => {
+        // console.log('clciked');
+        data.id = Date.now();
         console.log(data);
         addUser(data);
         reset({
@@ -98,9 +126,13 @@ const SignupForm = () => {
             profileType: '',
             phoneNumbers: [''],
             addresses: [{ street: '', city: '', state: '', zip: '' }],
-            relatives: [{ name: '', relationship: '', age: '' }]
+            relatives: [{ name: '', relationship: '', age: '' }],
+            documents: [''],
         });
+        navigate('/');
     };
+
+
 
     if (phonefields.length < 1) {
         addphone('');
@@ -151,7 +183,6 @@ const SignupForm = () => {
 
                         {/* Passwords */}
                         <Grid sx={{ width: { xs: '100%', md: '48%', sm: '48%', } }}>
-
                             <TextField
                                 label="Password"
                                 type="password"
@@ -202,7 +233,10 @@ const SignupForm = () => {
                                     <DatePicker
                                         label="Date of Birth"
                                         value={field.value ? dayjs(field.value) : null}
-                                        onChange={(date) => field.onChange(date ? date.toISOString() : null)}
+                                        onChange={(date) => {
+                                            field.onChange(date ? date.toISOString() : null);
+                                            trigger('dob');
+                                        }}
                                         slotProps={{
                                             textField: {
                                                 fullWidth: true,
@@ -213,6 +247,7 @@ const SignupForm = () => {
                                     />
                                 )}
                             />
+
                         </Grid>
 
                         <Grid sx={{ width: { xs: '100%', md: '48%', sm: '48%', } }}>
@@ -228,8 +263,164 @@ const SignupForm = () => {
                                         </Select>
                                     )}
                                 />
+                                <FormHelperText>{errors.profileType?.message}</FormHelperText>
+
                             </FormControl>
                         </Grid>
+
+                        {isAdult && (
+                            <>
+                                {documentFields.map((field, index) => {
+                                    const document = watch(`documents.${index}`);
+
+                                    return (
+                                        <Box
+                                            key={field.id}
+                                            sx={{
+                                                display: 'flex',
+                                                flexWrap: 'wrap',
+                                                alignItems: 'center',
+                                                gap: 2,
+                                                mt: 2,
+                                            }}
+                                        >
+                                            {/* Document Type Select */}
+                                            <FormControl sx={{ minWidth: 150, flexShrink: 0 }}>
+                                                <InputLabel id={`doc-label-${index}`}>Select Document</InputLabel>
+                                                <Select
+                                                    labelId={`doc-label-${index}`}
+                                                    label="Select Document"
+                                                    {...register(`documents.${index}.type`)}
+
+                                                >
+                                                    <MenuItem value="">
+                                                        <em>Select Document</em>
+                                                    </MenuItem>
+                                                    <MenuItem value="license">License</MenuItem>
+                                                    <MenuItem value="adhar">Adhar</MenuItem>
+                                                </Select>
+                                            </FormControl>
+
+                                            {/* File Upload */}
+                                            <Button
+                                                variant="outlined"
+                                                component="label"
+                                                disabled={!document?.type}
+                                            >
+                                                Upload File
+                                                <input
+                                                    type="file"
+                                                    hidden
+                                                    onChange={(e) => {
+                                                        const file = e.target.files?.[0];
+                                                        if (file) {
+                                                            setValue(`documents.${index}.file`, file);
+                                                        }
+                                                    }}
+                                                />
+                                            </Button>
+
+                                            {/* Show file name */}
+                                            {document?.file && (
+                                                <Box
+                                                    sx={{
+                                                        border: '1px solid',
+                                                        borderColor: 'grey.400',
+                                                        borderRadius: 1,
+                                                        px: 1.5,
+                                                        py: 0.5,
+                                                        maxWidth: 250,
+                                                        whiteSpace: 'nowrap',
+                                                        overflow: 'hidden',
+                                                        textOverflow: 'ellipsis',
+                                                        bgcolor: 'grey.100',
+                                                        cursor: 'default',
+                                                    }}
+                                                    title={document.file.name}
+                                                >
+                                                    <Typography variant="body2" noWrap>
+                                                        {document.file.name}
+                                                    </Typography>
+                                                </Box>
+                                            )}
+                                        </Box>
+                                    );
+                                })}
+                            </>
+                        )}
+
+                        {isMinor && (
+                            <Box
+                                sx={{
+                                    display: 'flex',
+                                    flexWrap: 'wrap',
+                                    alignItems: 'center',
+                                    gap: 2,
+                                    mt: 2,
+                                }}
+                            >
+                                {/* Select Birth Certificate Type */}
+                                <FormControl sx={{ minWidth: 150, flexShrink: 0 }}>
+                                    <InputLabel id="birth-doc-label">Select Document</InputLabel>
+                                    <Select
+                                        labelId="birth-doc-label"
+                                        label="Select Document"
+                                        {...register('documents.0.type')}
+                                        defaultValue="birthCertificate"
+                                     
+                                    >
+                                        <MenuItem value="birthCertificate">Birth Certificate</MenuItem>
+                                    </Select>
+                                </FormControl>
+
+                                {/* File Upload */}
+                                <Button
+                                    variant="outlined"
+                                    component="label"
+                                    
+                                >
+                                    Upload File
+                                    <input
+                                        type="file"
+                                        hidden
+                                        onChange={(e) => {
+                                            const file = e.target.files?.[0];
+                                            if (file) {
+                                                setValue('documents.0.file', file);
+                                            }
+                                        }}
+                                    />
+                                </Button>
+
+                                {/* Show Uploaded File */}
+                                {watch('documents.0.file') && (
+                                    <Box
+                                        sx={{
+                                            border: '1px solid',
+                                            borderColor: 'grey.400',
+                                            borderRadius: 1,
+                                            px: 1.5,
+                                            py: 0.5,
+                                            maxWidth: 250,
+                                            whiteSpace: 'nowrap',
+                                            overflow: 'hidden',
+                                            textOverflow: 'ellipsis',
+                                            bgcolor: 'grey.100',
+                                            cursor: 'default',
+                                        }}
+                                        title={watch('documents.0.file')?.name}
+                                    >
+                                        <Typography variant="body2" noWrap>
+                                            {watch('documents.0.file')?.name}
+                                        </Typography>
+                                    </Box>
+                                )}
+                            </Box>
+                        )}
+
+
+
+
 
                         {/* Phone Numbers */}
                         <Grid width={'100%'}>
@@ -317,6 +508,7 @@ const SignupForm = () => {
                                         <Grid >
                                             <TextField
                                                 label="ZIP Code"
+                                                type='number'
                                                 fullWidth
                                                 {...register(`addresses.${index}.zip`)}
                                                 error={!!errors.addresses?.[index]?.zip}
@@ -354,7 +546,7 @@ const SignupForm = () => {
                                             />
                                         </Grid>
                                         <Grid width={'20%'}>
-                                            <FormControl fullWidth>
+                                            <FormControl fullWidth error={!!errors.relatives?.[index]?.relationship}>
                                                 <InputLabel>Relationship</InputLabel>
                                                 <Controller
                                                     name={`relatives.${index}.relationship`}
@@ -363,10 +555,12 @@ const SignupForm = () => {
                                                         <Select {...field} label="Relationship">
                                                             <MenuItem value="parent">Parent</MenuItem>
                                                             <MenuItem value="sibling">Sibling</MenuItem>
-                                                            <MenuItem value="child">Child</MenuItem>
+                                                            <MenuItem value="married">Married</MenuItem>
                                                         </Select>
                                                     )}
                                                 />
+
+                                                <FormHelperText>{errors.relatives?.[index]?.relationship?.message}</FormHelperText>
                                             </FormControl>
                                         </Grid>
                                         <Grid  >
@@ -387,6 +581,83 @@ const SignupForm = () => {
                                                 <Add />
                                             </IconButton>
                                         </Grid>
+
+                                        {watch(`relatives.${index}.relationship`) === 'married' && (
+                                            <>
+                                                {
+                                                    documentFields.map((field, index) => (
+                                                        <Box
+                                                            key={field.id}
+                                                            sx={{
+                                                                display: 'flex',
+                                                                flexWrap: 'wrap',
+                                                                alignItems: 'center',
+                                                                gap: 2,
+                                                                mt: 2,
+                                                            }}
+                                                        >
+                                                            {/* Document Type */}
+                                                            <FormControl sx={{ minWidth: 150, flexShrink: 0 }}>
+                                                                <InputLabel id={`doc-label-${index}`}>Select Document</InputLabel>
+                                                                <Select
+                                                                    labelId={`doc-label-${index}`}
+                                                                    {...register(`documents.${index}.type`)}
+                                                                    defaultValue={field.type}
+                                                                    label="Select Document"
+                                                                >
+                                                                    <MenuItem value=""><em>Select Document</em></MenuItem>
+                                                                    <MenuItem value="marriedCertificate">Married Certificate</MenuItem>
+                                                                </Select>
+                                                            </FormControl>
+
+                                                            {/* File Upload */}
+                                                            <Button
+                                                                variant="outlined"
+                                                                component="label"
+                                                                disabled={!watch(`documents.${index}.type`)}
+                                                            >
+                                                                Upload File
+                                                                <input
+                                                                    type="file"
+                                                                    hidden
+                                                                    onChange={(e) => {
+                                                                        const file = e.target.files?.[0];
+                                                                        if (file) {
+                                                                            setValue(`documents.${index}.file`, file);
+                                                                        }
+                                                                    }}
+                                                                />
+                                                            </Button>
+
+                                                            {/* File Name Display */}
+                                                            {watch(`documents.${index}.file`) && (
+                                                                <Box
+                                                                    sx={{
+                                                                        border: '1px solid',
+                                                                        borderColor: 'grey.400',
+                                                                        borderRadius: 1,
+                                                                        px: 1.5,
+                                                                        py: 0.5,
+                                                                        maxWidth: 250,
+                                                                        whiteSpace: 'nowrap',
+                                                                        overflow: 'hidden',
+                                                                        textOverflow: 'ellipsis',
+                                                                        bgcolor: 'grey.100',
+                                                                        cursor: 'default',
+                                                                    }}
+                                                                    title={watch(`documents.${index}.file`)?.name}
+                                                                >
+                                                                    <Typography variant="body2" noWrap>
+                                                                        {watch(`documents.${index}.file`)?.name}
+                                                                    </Typography>
+                                                                </Box>
+                                                            )}
+                                                        </Box>
+                                                    ))
+                                                }
+                                            </>
+
+                                        )}
                                     </Grid>
                                 </Paper>
                             ))}
@@ -403,7 +674,6 @@ const SignupForm = () => {
                         </Box>
                     </Grid>
                 </form>
-
             </Paper>
         </Container>
     );
