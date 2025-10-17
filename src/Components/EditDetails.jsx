@@ -10,7 +10,7 @@ import * as yup from 'yup';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { Add, Remove } from '@mui/icons-material';
 import dayjs from 'dayjs';
-import { useUsers } from '../context/userContext';
+import { useUsers } from '../context/UserContext';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 
@@ -22,18 +22,7 @@ const schema = yup.object().shape({
     dob: yup
         .date()
         .nullable()
-        .required('Date of birth is required')
-        .test(
-            'age',
-            'You must be at least 18 years old',
-            (value) => {
-                if (!value) return false; // required validation handles this
-                const today = dayjs();
-                const birthDate = dayjs(value);
-                const age = today.diff(birthDate, 'year');
-                return age >= 18;
-            }
-        ),
+        .required('Date of birth is required'),
     profileType: yup.string().required('Profile type is required'),
 
     phoneNumbers: yup.array().of(
@@ -73,7 +62,7 @@ const EditDetails = () => {
     const location = useLocation();
     const { user } = location.state || {};
     console.log(user);
-    
+
 
     const {
         register,
@@ -81,6 +70,8 @@ const EditDetails = () => {
         handleSubmit,
         reset,
         trigger,
+        watch,
+        setValue,
         formState: { errors },
     } = useForm({
         resolver: yupResolver(schema),
@@ -104,10 +95,15 @@ const EditDetails = () => {
         append: addRelative,
         remove: removeRelative,
     } = useFieldArray({ control, name: 'relatives' });
+    const { fields: documentFields } = useFieldArray({ control, name: 'documents' });
 
+    const dob = watch('dob');
+    const isAdult = dob ? dayjs().diff(dayjs(watch('dob')), 'year') >= 18 : false;
+
+    const isMinor = dob ? dayjs().diff(dayjs(watch('dob')), 'year') < 18 : false;
     useEffect(() => {
         if (user)
-        reset(user);
+            reset(user);
         else navigate('/');
     }, [user, reset, navigate]);
 
@@ -202,7 +198,7 @@ const EditDetails = () => {
                                             field.onChange(date ? date.toISOString() : null);
                                             trigger('dob');
                                         }}
- 
+
                                         slotProps={{
                                             textField: {
                                                 fullWidth: true,
@@ -221,17 +217,109 @@ const EditDetails = () => {
                                 <Controller
                                     name="profileType"
                                     control={control}
-                                    render={({ field }) => ( 
-                                        <Select {...field} label="Profile Type"> 
+                                    render={({ field }) => (
+                                        <Select {...field} label="Profile Type">
                                             <MenuItem value="personal">Personal</MenuItem>
                                             <MenuItem value="business">Business</MenuItem>
                                         </Select>
                                     )}
-                                /> 
+                                />
                                 <FormHelperText>{errors.profileType?.message}</FormHelperText>
                             </FormControl>
                         </Grid>
 
+                        <Grid container spacing={2}>
+                            {isAdult &&
+                                documentFields
+                                    .filter((field) => field.type === 'license' || field.type === 'adhar')
+                                    .map((field, index) => (
+                                        <Grid item xs={12} sm={field.type === 'license' ? 8 : 4} key={field.id}>
+
+                                            {field.type === 'license' && (
+                                                <>
+                                                    <Typography variant="subtitle1" gutterBottom>
+                                                        Upload License
+                                                    </Typography>
+                                                    <Button variant="outlined" component="label">
+                                                        Choose File
+                                                        <input
+                                                            type="file"
+                                                            hidden
+                                                            accept="image/*,application/pdf"
+                                                            onChange={(e) => {
+                                                                setValue(`documents.${index}.file`, e.target.files[0], {
+                                                                    shouldValidate: true,
+                                                                });
+                                                            }}
+                                                        />
+                                                    </Button>
+                                                    {watch(`documents.${index}.file`)?.name && (
+                                                        <Typography variant="body2" mt={1}>
+                                                            Selected: {watch(`documents.${index}.file`)?.name}
+                                                        </Typography>
+                                                    )}
+                                                </>
+                                            )}
+
+                                            {field.type === 'adhar' && (
+                                                <>
+                                                    <Typography variant="subtitle1" gutterBottom>
+                                                        Upload Aadhar
+                                                    </Typography>
+                                                    <Button variant="outlined" component="label">
+                                                        Choose File
+                                                        <input
+                                                            type="file"
+                                                            hidden
+                                                            accept="image/*,application/pdf"
+                                                            onChange={(e) => {
+                                                                setValue(`documents.${index}.file`, e.target.files[0], {
+                                                                    shouldValidate: true,
+                                                                });
+                                                            }}
+                                                        />
+                                                    </Button>
+                                                    {watch(`documents.${index}.file`)?.name && (
+                                                        <Typography variant="body2" mt={1}>
+                                                            Selected: {watch(`documents.${index}.file`)?.name}
+                                                        </Typography>
+                                                    )}
+                                                </>
+                                            )}
+
+                                        </Grid>
+                                    ))}
+                        </Grid>
+
+                        {isMinor && documentFields.map((field, index) => (
+                            <div key={field.id}>
+                                {field.type === 'birthcert' && (
+                                    <>
+                                        <Typography variant="subtitle1" gutterBottom>
+                                            Upload Birth Certificate
+                                        </Typography>
+                                        <Button variant="outlined" component="label">
+                                            Choose File
+                                            <input
+                                                type="file"
+                                                hidden
+                                                accept="image/*,application/pdf"
+                                                onChange={(e) => {
+                                                    setValue(`documents.${index}.file`, e.target.files[0], {
+                                                        shouldValidate: true,
+                                                    });
+                                                }}
+                                            />
+                                        </Button>
+                                        {watch(`documents.${index}.file`)?.name && (
+                                            <Typography variant="body2" mt={1}>
+                                                Selected: {watch(`documents.${index}.file`)?.name}
+                                            </Typography>
+                                        )}
+                                    </>
+                                )}
+                            </div>
+                        ))}
 
                         {/* Phone Numbers */}
                         <Grid width={'100%'}>
@@ -366,13 +454,14 @@ const EditDetails = () => {
                                                             <MenuItem value="parent">Parent</MenuItem>
                                                             <MenuItem value="sibling">Sibling</MenuItem>
                                                             <MenuItem value="child">Child</MenuItem>
+                                                            <MenuItem value="married">Married</MenuItem>
                                                         </Select>
                                                     )}
                                                 />
                                                 <FormHelperText>{errors.relatives?.[index]?.relationship?.message}</FormHelperText>
                                             </FormControl>
                                         </Grid>
-                                        <Grid  >
+                                        <Grid>
                                             <TextField
                                                 label="Age"
                                                 type="number"
@@ -390,6 +479,33 @@ const EditDetails = () => {
                                                 <Add />
                                             </IconButton>
                                         </Grid>
+
+                                        {/* Conditionally show Birth Certificate upload if relationship is 'married' */}
+                                        {watch(`relatives.${index}.relationship`) === 'married' && (
+                                            <Grid item xs={12} mt={2}>
+                                                <Typography variant="subtitle1" gutterBottom>
+                                                    Upload Married Certificate
+                                                </Typography>
+                                                <Button variant="outlined" component="label">
+                                                    Choose File
+                                                    <input
+                                                        type="file"
+                                                        hidden
+                                                        accept="image/*,application/pdf"
+                                                        onChange={(e) => {
+                                                            setValue(`documents.${index}.file`, e.target.files[0], {
+                                                                shouldValidate: true,
+                                                            });
+                                                        }}
+                                                    />
+                                                </Button>
+                                                {watch(`documents.${index}.file`)?.name && (
+                                                    <Typography variant="body2" mt={1}>
+                                                        Selected: {watch(`documents.${index}.file`)?.name}
+                                                    </Typography>
+                                                )}
+                                            </Grid>
+                                        )}
                                     </Grid>
                                 </Paper>
                             ))}
@@ -409,3 +525,4 @@ const EditDetails = () => {
 };
 
 export default EditDetails;
+ 

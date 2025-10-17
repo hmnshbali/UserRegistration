@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { TextField, Button, RadioGroup, FormControlLabel, Radio, FormControl, FormHelperText, FormLabel, MenuItem, Select, InputLabel, Grid, IconButton, Box, Typography, Container, Paper, Divider } from '@mui/material';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
-import Form from 'react-bootstrap/Form';
 import * as yup from 'yup';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { Add, Remove } from '@mui/icons-material';
@@ -54,7 +53,7 @@ const schema = yup.object().shape({
     documents: yup.array().of(
         yup.object().shape({
             type: yup.string().required('Document type is required'),
-            file: yup.mixed().required('Document file is required'),
+
         })
     ),
 });
@@ -87,13 +86,13 @@ const SignupForm = () => {
             addresses: [{ street: '', city: '', state: '', zip: '' }],
             relatives: [{ name: '', relationship: '', age: '' }],
             documents: [
-                { type: '', file: null },
-                { type: '', file: null }
+                { type: 'license', file: null },
+                { type: 'adhar', file: null },
+                { type: 'birthcert', file: null },
+                { type: 'married', file: null },
             ]
         },
     });
-
-
 
 
     const { fields: phonefields, append: addphone, remove: removephone } = useFieldArray({ control, name: 'phoneNumbers' });
@@ -104,14 +103,17 @@ const SignupForm = () => {
     const { fields: documentFields } = useFieldArray({ control, name: 'documents' });
     const { addUser } = useUsers();
 
-    const isAdult = dayjs().diff(dayjs(watch('dob')), 'year') >= 18;
+    // console.log(documentFields);
+
     const dob = watch('dob');
+    const isAdult = dob ? dayjs().diff(dayjs(watch('dob')), 'year') >= 18 : false;
+
     const isMinor = dob ? dayjs().diff(dayjs(watch('dob')), 'year') < 18 : false;
-    console.log(isMinor);
+    // console.log(isMinor);
 
 
     const onSubmit = (data) => {
-        // console.log('clciked');
+        console.log('clicked');
         data.id = Date.now();
         console.log(data);
         addUser(data);
@@ -127,16 +129,25 @@ const SignupForm = () => {
             phoneNumbers: [''],
             addresses: [{ street: '', city: '', state: '', zip: '' }],
             relatives: [{ name: '', relationship: '', age: '' }],
-            documents: [''],
+            documents: [
+                { type: '', file: null },
+                { type: '', file: null },
+                { type: '', file: null },
+                { type: '', file: null },
+            ]
+
         });
         navigate('/');
     };
 
 
 
-    if (phonefields.length < 1) {
-        addphone('');
-    }
+    useEffect(() => {
+        if (phonefields.length < 1) {
+            addphone('');
+        }
+    }, [phonefields.length, addphone]);
+
 
     return (
         <Container maxWidth="md">
@@ -268,157 +279,101 @@ const SignupForm = () => {
                             </FormControl>
                         </Grid>
 
-                        {isAdult && (
-                            <>
-                                {documentFields.map((field, index) => {
-                                    const document = watch(`documents.${index}`);
+                        <Grid container spacing={2}>
+                            {isAdult &&
+                                documentFields
+                                    .filter((field) => field.type === 'license' || field.type === 'adhar')
+                                    .map((field, index) => (
+                                        <Grid item xs={12} sm={field.type === 'license' ? 8 : 4} key={field.id}>
 
-                                    return (
-                                        <Box
-                                            key={field.id}
-                                            sx={{
-                                                display: 'flex',
-                                                flexWrap: 'wrap',
-                                                alignItems: 'center',
-                                                gap: 2,
-                                                mt: 2,
-                                            }}
-                                        >
-                                            {/* Document Type Select */}
-                                            <FormControl sx={{ minWidth: 150, flexShrink: 0 }}>
-                                                <InputLabel id={`doc-label-${index}`}>Select Document</InputLabel>
-                                                <Select
-                                                    labelId={`doc-label-${index}`}
-                                                    label="Select Document"
-                                                    {...register(`documents.${index}.type`)}
-
-                                                >
-                                                    <MenuItem value="">
-                                                        <em>Select Document</em>
-                                                    </MenuItem>
-                                                    <MenuItem value="license">License</MenuItem>
-                                                    <MenuItem value="adhar">Adhar</MenuItem>
-                                                </Select>
-                                            </FormControl>
-
-                                            {/* File Upload */}
-                                            <Button
-                                                variant="outlined"
-                                                component="label"
-                                                disabled={!document?.type}
-                                            >
-                                                Upload File
-                                                <input
-                                                    type="file"
-                                                    hidden
-                                                    onChange={(e) => {
-                                                        const file = e.target.files?.[0];
-                                                        if (file) {
-                                                            setValue(`documents.${index}.file`, file);
-                                                        }
-                                                    }}
-                                                />
-                                            </Button>
-
-                                            {/* Show file name */}
-                                            {document?.file && (
-                                                <Box
-                                                    sx={{
-                                                        border: '1px solid',
-                                                        borderColor: 'grey.400',
-                                                        borderRadius: 1,
-                                                        px: 1.5,
-                                                        py: 0.5,
-                                                        maxWidth: 250,
-                                                        whiteSpace: 'nowrap',
-                                                        overflow: 'hidden',
-                                                        textOverflow: 'ellipsis',
-                                                        bgcolor: 'grey.100',
-                                                        cursor: 'default',
-                                                    }}
-                                                    title={document.file.name}
-                                                >
-                                                    <Typography variant="body2" noWrap>
-                                                        {document.file.name}
+                                            {field.type === 'license' && (
+                                                <>
+                                                    <Typography variant="subtitle1" gutterBottom>
+                                                        Upload License
                                                     </Typography>
-                                                </Box>
+                                                    <Button variant="outlined" component="label">
+                                                        Choose File
+                                                        <input
+                                                            type="file"
+                                                            hidden
+                                                            accept="image/*,application/pdf"
+                                                            onChange={(e) => {
+                                                                setValue(`documents.${index}.file`, e.target.files[0], {
+                                                                    shouldValidate: true,
+                                                                });
+                                                            }}
+                                                        />
+                                                    </Button>
+                                                    {watch(`documents.${index}.file`)?.name && (
+                                                        <Typography variant="body2" mt={1}>
+                                                            Selected: {watch(`documents.${index}.file`)?.name}
+                                                        </Typography>
+                                                    )}
+                                                </>
                                             )}
-                                        </Box>
-                                    );
-                                })}
-                            </>
-                        )}
 
-                        {isMinor && (
-                            <Box
-                                sx={{
-                                    display: 'flex',
-                                    flexWrap: 'wrap',
-                                    alignItems: 'center',
-                                    gap: 2,
-                                    mt: 2,
-                                }}
-                            >
-                                {/* Select Birth Certificate Type */}
-                                <FormControl sx={{ minWidth: 150, flexShrink: 0 }}>
-                                    <InputLabel id="birth-doc-label">Select Document</InputLabel>
-                                    <Select
-                                        labelId="birth-doc-label"
-                                        label="Select Document"
-                                        {...register('documents.0.type')}
-                                        defaultValue="birthCertificate"
-                                     
-                                    >
-                                        <MenuItem value="birthCertificate">Birth Certificate</MenuItem>
-                                    </Select>
-                                </FormControl>
+                                            {field.type === 'adhar' && (
+                                                <>
+                                                    <Typography variant="subtitle1" gutterBottom>
+                                                        Upload Aadhar
+                                                    </Typography>
+                                                    <Button variant="outlined" component="label">
+                                                        Choose File
+                                                        <input
+                                                            type="file"
+                                                            hidden
+                                                            accept="image/*,application/pdf"
+                                                            onChange={(e) => {
+                                                                setValue(`documents.${index}.file`, e.target.files[0], {
+                                                                    shouldValidate: true,
+                                                                });
+                                                            }}
+                                                        />
+                                                    </Button>
+                                                    {watch(`documents.${index}.file`)?.name && (
+                                                        <Typography variant="body2" mt={1}>
+                                                            Selected: {watch(`documents.${index}.file`)?.name}
+                                                        </Typography>
+                                                    )}
+                                                </>
+                                            )}
 
-                                {/* File Upload */}
-                                <Button
-                                    variant="outlined"
-                                    component="label"
-                                    
-                                >
-                                    Upload File
-                                    <input
-                                        type="file"
-                                        hidden
-                                        onChange={(e) => {
-                                            const file = e.target.files?.[0];
-                                            if (file) {
-                                                setValue('documents.0.file', file);
-                                            }
-                                        }}
-                                    />
-                                </Button>
+                                        </Grid>
+                                    ))}
+                        </Grid>
 
-                                {/* Show Uploaded File */}
-                                {watch('documents.0.file') && (
-                                    <Box
-                                        sx={{
-                                            border: '1px solid',
-                                            borderColor: 'grey.400',
-                                            borderRadius: 1,
-                                            px: 1.5,
-                                            py: 0.5,
-                                            maxWidth: 250,
-                                            whiteSpace: 'nowrap',
-                                            overflow: 'hidden',
-                                            textOverflow: 'ellipsis',
-                                            bgcolor: 'grey.100',
-                                            cursor: 'default',
-                                        }}
-                                        title={watch('documents.0.file')?.name}
-                                    >
-                                        <Typography variant="body2" noWrap>
-                                            {watch('documents.0.file')?.name}
+
+
+
+                        {isMinor && documentFields.map((field, index) => (
+                            <div key={field.id}>
+                                {field.type === 'birthcert' && (
+                                    <>
+                                        <Typography variant="subtitle1" gutterBottom>
+                                            Upload Birth Certificate
                                         </Typography>
-                                    </Box>
+                                        <Button variant="outlined" component="label">
+                                            Choose File
+                                            <input
+                                                type="file"
+                                                hidden
+                                                accept="image/*,application/pdf"
+                                                onChange={(e) => {
+                                                    setValue(`documents.${index}.file`, e.target.files[0], {
+                                                        shouldValidate: true,
+                                                    });
+                                                }}
+                                            />
+                                        </Button>
+                                        {watch(`documents.${index}.file`)?.name && (
+                                            <Typography variant="body2" mt={1}>
+                                                Selected: {watch(`documents.${index}.file`)?.name}
+                                            </Typography>
+                                        )}
+                                    </>
                                 )}
-                            </Box>
-                        )}
-
-
+                            </div>
+                        ))}
 
 
 
@@ -469,74 +424,78 @@ const SignupForm = () => {
                         </Grid>
 
 
+
                         {/* Addresses */}
-                        <Grid >
+                        < Grid >
                             <Typography variant="h6" mt={4}>
                                 Addresses
                             </Typography>
-                            {addressFields.map((field, index) => (
-                                <Paper key={field.id} sx={{ p: 2, mt: 2, border: '1px solid #ccc' }}>
-                                    <Grid container spacing={2}>
-                                        <Grid sx={{ width: { xs: '100%', md: '32%', sm: '48%', } }}>
+                            {
+                                addressFields.map((field, index) => (
+                                    <Paper key={field.id} sx={{ p: 2, mt: 2, border: '1px solid #ccc' }}>
+                                        <Grid container spacing={2}>
+                                            <Grid sx={{ width: { xs: '100%', md: '32%', sm: '48%', } }}>
 
-                                            <TextField
-                                                label="Street"
-                                                fullWidth
-                                                {...register(`addresses.${index}.street`)}
-                                                error={!!errors.addresses?.[index]?.street}
-                                                helperText={errors.addresses?.[index]?.street?.message}
-                                            />
+                                                <TextField
+                                                    label="Street"
+                                                    fullWidth
+                                                    {...register(`addresses.${index}.street`)}
+                                                    error={!!errors.addresses?.[index]?.street}
+                                                    helperText={errors.addresses?.[index]?.street?.message}
+                                                />
+                                            </Grid>
+                                            <Grid sx={{ width: { xs: '100%', md: '32%', sm: '48%', } }}>
+                                                <TextField
+                                                    label="City"
+                                                    fullWidth
+                                                    {...register(`addresses.${index}.city`)}
+                                                    error={!!errors.addresses?.[index]?.city}
+                                                    helperText={errors.addresses?.[index]?.city?.message}
+                                                />
+                                            </Grid>
+                                            <Grid >
+                                                <TextField
+                                                    label="State"
+                                                    fullWidth
+                                                    {...register(`addresses.${index}.state`)}
+                                                    error={!!errors.addresses?.[index]?.state}
+                                                    helperText={errors.addresses?.[index]?.state?.message}
+                                                />
+                                            </Grid>
+                                            <Grid >
+                                                <TextField
+                                                    label="ZIP Code"
+                                                    type='number'
+                                                    fullWidth
+                                                    {...register(`addresses.${index}.zip`)}
+                                                    error={!!errors.addresses?.[index]?.zip}
+                                                    helperText={errors.addresses?.[index]?.zip?.message}
+                                                />
+                                            </Grid>
+
+                                            <Grid >
+                                                <IconButton onClick={() => removeAddress(index)} disabled={addressFields.length === 1}>
+                                                    <Remove />
+                                                </IconButton>
+                                                <IconButton onClick={() => addAddress({ street: '', city: '', state: '', zip: '' })}>
+                                                    <Add />
+                                                </IconButton>
+                                            </Grid>
                                         </Grid>
-                                        <Grid sx={{ width: { xs: '100%', md: '32%', sm: '48%', } }}>
-                                            <TextField
-                                                label="City"
-                                                fullWidth
-                                                {...register(`addresses.${index}.city`)}
-                                                error={!!errors.addresses?.[index]?.city}
-                                                helperText={errors.addresses?.[index]?.city?.message}
-                                            />
-                                        </Grid>
-                                        <Grid >
-                                            <TextField
-                                                label="State"
-                                                fullWidth
-                                                {...register(`addresses.${index}.state`)}
-                                                error={!!errors.addresses?.[index]?.state}
-                                                helperText={errors.addresses?.[index]?.state?.message}
-                                            />
-                                        </Grid>
-                                        <Grid >
-                                            <TextField
-                                                label="ZIP Code"
-                                                type='number'
-                                                fullWidth
-                                                {...register(`addresses.${index}.zip`)}
-                                                error={!!errors.addresses?.[index]?.zip}
-                                                helperText={errors.addresses?.[index]?.zip?.message}
-                                            />
-                                        </Grid>
-                                        <Grid >
-                                            <IconButton onClick={() => removeAddress(index)} disabled={addressFields.length === 1}>
-                                                <Remove />
-                                            </IconButton>
-                                            <IconButton onClick={() => addAddress({ street: '', city: '', state: '', zip: '' })}>
-                                                <Add />
-                                            </IconButton>
-                                        </Grid>
-                                    </Grid>
-                                </Paper>
-                            ))}
+                                    </Paper>
+                                ))
+                            }
                         </Grid>
 
                         {/* Relatives */}
-                        <Grid width={'100%'} >
+                        <Grid width={'100%'}>
                             <Typography variant="h6" mt={4}>
                                 Relatives
                             </Typography>
                             {relativeFields.map((field, index) => (
                                 <Paper key={field.id} sx={{ p: 2, mt: 2, border: '1px solid #ccc' }}>
-                                    <Grid container spacing={2}>
-                                        <Grid >
+                                    <Grid container spacing={2} alignItems="center">
+                                        <Grid item xs={12} sm={4}>
                                             <TextField
                                                 label="Name"
                                                 fullWidth
@@ -545,7 +504,8 @@ const SignupForm = () => {
                                                 helperText={errors.relatives?.[index]?.name?.message}
                                             />
                                         </Grid>
-                                        <Grid width={'20%'}>
+
+                                        <Grid item xs={12} sm={3} sx={{ minWidth: 160 }}>
                                             <FormControl fullWidth error={!!errors.relatives?.[index]?.relationship}>
                                                 <InputLabel>Relationship</InputLabel>
                                                 <Controller
@@ -559,11 +519,11 @@ const SignupForm = () => {
                                                         </Select>
                                                     )}
                                                 />
-
                                                 <FormHelperText>{errors.relatives?.[index]?.relationship?.message}</FormHelperText>
                                             </FormControl>
                                         </Grid>
-                                        <Grid  >
+
+                                        <Grid item xs={12} sm={2}>
                                             <TextField
                                                 label="Age"
                                                 type="number"
@@ -573,109 +533,68 @@ const SignupForm = () => {
                                                 helperText={errors.relatives?.[index]?.age?.message}
                                             />
                                         </Grid>
-                                        <Grid >
-                                            <IconButton onClick={() => removeRelative(index)} disabled={relativeFields.length === 1}>
+
+                                        <Grid item xs={12} sm={3} display="flex" alignItems="center" gap={1}>
+                                            <IconButton
+                                                onClick={() => removeRelative(index)}
+                                                disabled={relativeFields.length === 1}
+                                                aria-label="Remove relative"
+                                            >
                                                 <Remove />
                                             </IconButton>
-                                            <IconButton onClick={() => addRelative({ name: '', relationship: '', age: '' })}>
+                                            <IconButton onClick={() => addRelative({ name: '', relationship: '', age: '' })} aria-label="Add relative">
                                                 <Add />
                                             </IconButton>
                                         </Grid>
 
+                                        {/* Conditionally show Birth Certificate upload if relationship is 'married' */}
                                         {watch(`relatives.${index}.relationship`) === 'married' && (
-                                            <>
-                                                {
-                                                    documentFields.map((field, index) => (
-                                                        <Box
-                                                            key={field.id}
-                                                            sx={{
-                                                                display: 'flex',
-                                                                flexWrap: 'wrap',
-                                                                alignItems: 'center',
-                                                                gap: 2,
-                                                                mt: 2,
-                                                            }}
-                                                        >
-                                                            {/* Document Type */}
-                                                            <FormControl sx={{ minWidth: 150, flexShrink: 0 }}>
-                                                                <InputLabel id={`doc-label-${index}`}>Select Document</InputLabel>
-                                                                <Select
-                                                                    labelId={`doc-label-${index}`}
-                                                                    {...register(`documents.${index}.type`)}
-                                                                    defaultValue={field.type}
-                                                                    label="Select Document"
-                                                                >
-                                                                    <MenuItem value=""><em>Select Document</em></MenuItem>
-                                                                    <MenuItem value="marriedCertificate">Married Certificate</MenuItem>
-                                                                </Select>
-                                                            </FormControl>
-
-                                                            {/* File Upload */}
-                                                            <Button
-                                                                variant="outlined"
-                                                                component="label"
-                                                                disabled={!watch(`documents.${index}.type`)}
-                                                            >
-                                                                Upload File
-                                                                <input
-                                                                    type="file"
-                                                                    hidden
-                                                                    onChange={(e) => {
-                                                                        const file = e.target.files?.[0];
-                                                                        if (file) {
-                                                                            setValue(`documents.${index}.file`, file);
-                                                                        }
-                                                                    }}
-                                                                />
-                                                            </Button>
-
-                                                            {/* File Name Display */}
-                                                            {watch(`documents.${index}.file`) && (
-                                                                <Box
-                                                                    sx={{
-                                                                        border: '1px solid',
-                                                                        borderColor: 'grey.400',
-                                                                        borderRadius: 1,
-                                                                        px: 1.5,
-                                                                        py: 0.5,
-                                                                        maxWidth: 250,
-                                                                        whiteSpace: 'nowrap',
-                                                                        overflow: 'hidden',
-                                                                        textOverflow: 'ellipsis',
-                                                                        bgcolor: 'grey.100',
-                                                                        cursor: 'default',
-                                                                    }}
-                                                                    title={watch(`documents.${index}.file`)?.name}
-                                                                >
-                                                                    <Typography variant="body2" noWrap>
-                                                                        {watch(`documents.${index}.file`)?.name}
-                                                                    </Typography>
-                                                                </Box>
-                                                            )}
-                                                        </Box>
-                                                    ))
-                                                }
-                                            </>
-
+                                            <Grid item xs={12} mt={2}>
+                                                <Typography variant="subtitle1" gutterBottom>
+                                                    Upload Married Certificate
+                                                </Typography>
+                                                <Button variant="outlined" component="label">
+                                                    Choose File
+                                                    <input
+                                                        type="file"
+                                                        hidden
+                                                        accept="image/*,application/pdf"
+                                                        onChange={(e) => {
+                                                            setValue(`documents.${index}.file`, e.target.files[0], {
+                                                                shouldValidate: true,
+                                                            });
+                                                        }}
+                                                    />
+                                                </Button>
+                                                {watch(`documents.${index}.file`)?.name && (
+                                                    <Typography variant="body2" mt={1}>
+                                                        Selected: {watch(`documents.${index}.file`)?.name}
+                                                    </Typography>
+                                                )}
+                                            </Grid>
                                         )}
                                     </Grid>
                                 </Paper>
                             ))}
                         </Grid>
 
+
                         {/* Submit */}
 
                     </Grid>
+
                     <Grid>
                         <Box mt={3}>
-                            <Button type="submit" variant="contained" >
+                            <Button variant="contained" color="primary" type="submit">
                                 Register
                             </Button>
+
                         </Box>
                     </Grid>
+
                 </form>
             </Paper>
-        </Container>
+        </Container >
     );
 };
 
