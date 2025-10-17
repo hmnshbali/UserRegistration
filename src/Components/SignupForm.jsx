@@ -168,8 +168,8 @@ const SignupForm = () => {
                                 fullWidth
                                 {...register('firstName')}
                                 error={!!errors.firstName}
-                                helperText={errors.firstName?.message}
-                            />
+                                helperText={errors.firstName?.message} 
+                            /> 
                         </Grid>
                         <Grid sx={{ width: { xs: '100%', md: '48%', sm: '48%', } }}>
                             <TextField

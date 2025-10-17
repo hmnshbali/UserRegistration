@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useUsers } from '../context/userContext';
+import { useUsers } from '../context/UserContext';
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
 
@@ -71,9 +71,19 @@ const UserGrid = () => {
                     <Typography variant="h4" fontWeight="bold" color="primary" gutterBottom textAlign="center">
                         User Details
                     </Typography>
-                    <Button variant="contained" color="primary" onClick={() => navigate('/signup')}>
+                    <div style={{ display: 'flex', gap: '10px', mt: 2 }}>
+                       <Button variant="contained" color="primary" onClick={() => navigate('/signup')}>
                         Add New User
                     </Button>
+
+                    <Button variant="contained" color="primary" onClick={() => navigate('/TodoTaks')}>
+                        Todo Taks
+                    </Button>
+
+
+
+                    </div>
+                   
                 </Box>
 
                 <TableContainer component={Paper} elevation={4} sx={{ borderRadius: 2, overflowX: 'auto' }}>

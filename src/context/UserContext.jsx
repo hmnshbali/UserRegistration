@@ -6,6 +6,7 @@ export const useUsers = () => useContext(UserContext);
 
 export const UserProvider = ({ children }) => {
   const [users, setUsers] = useState([]);
+  const [tasks, setTasks] = useState([]);
 
   // Load users from localStorage initially
   useEffect(() => {
@@ -43,8 +44,12 @@ export const UserProvider = ({ children }) => {
     });
   };
 
+  const addTask = (task) => {
+    setTasks((prev) => [...prev, task]);
+  }
+
   return (
-    <UserContext.Provider value={{ users, addUser, editUser, deleteUser, cloneUser }}>
+    <UserContext.Provider value={{ users, addUser, editUser, deleteUser, cloneUser, tasks, addTask ,setTasks}}>
       {children}
     </UserContext.Provider>
   );
